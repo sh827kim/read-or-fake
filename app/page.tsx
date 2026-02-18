@@ -4,7 +4,6 @@ import { useState, useCallback } from 'react';
 import FileUploader from '@/app/components/FileUploader';
 import ProgressBar from '@/app/components/ProgressBar';
 import ReportTable from '@/app/components/ReportTable';
-import BookComparisonCard from '@/app/components/BookComparisonCard';
 import type { BookReport, AnalysisResult } from '@/app/lib/types';
 import { downloadResults, downloadTemplate } from '@/app/lib/download';
 
@@ -31,28 +30,46 @@ export default function Home() {
     setStep('analyzing');
     setProgress({ current: 0, total: reports.length });
     setError(null);
+    setResults([]); // 결과 초기화
 
-    try {
-      // 서버에 배치로 보내기
-      const response = await fetch('/api/verify-books', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reports }),
-      });
+    let completedCount = 0;
 
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || `서버 오류 (${response.status})`);
+    // 순차적으로 API 호출 (진행률 업데이트를 위해)
+    for (const report of reports) {
+      try {
+        const response = await fetch('/api/verify-books', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reports: [report] }), // 하나씩 전송
+        });
+
+        if (!response.ok) {
+          throw new Error(`API Error: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // 결과 누적 업데이트
+        setResults(prev => [...prev, ...data.results]);
+      } catch (err) {
+        // 개별 건 실패 시에도 계속 진행
+        console.error('분석 실패:', err);
+        setResults(prev => [
+          ...prev,
+          {
+            report,
+            verification: { found: false },
+            status: 'error',
+            errorMessage: '서버 연결 실패',
+          }
+        ]);
+      } finally {
+        completedCount++;
+        setProgress({ current: completedCount, total: reports.length });
       }
-
-      const data = await response.json();
-      setResults(data.results);
-      setProgress({ current: reports.length, total: reports.length });
-      setStep('results');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '분석 중 오류가 발생했습니다.');
-      setStep('upload');
     }
+
+    setStep('results');
   }, [reports]);
 
   const handleDownload = useCallback(() => {
@@ -296,14 +313,6 @@ export default function Home() {
               selectedIndex={selectedIndex}
               onUpdateResult={handleUpdateResult}
             />
-
-            {/* 비교 카드 */}
-            {selectedIndex !== null && results[selectedIndex] && (
-              <BookComparisonCard
-                result={results[selectedIndex]}
-                onClose={() => setSelectedIndex(null)}
-              />
-            )}
           </div>
         )}
       </main>

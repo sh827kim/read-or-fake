@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, Fragment } from 'react';
+import BookComparisonCard from './BookComparisonCard';
 import type { AnalysisResult, ReviewAnalysis } from '@/app/lib/types';
 
 const MAX_AI_ANALYSES = 5;
@@ -168,61 +169,76 @@ export default function ReportTable({ results, onSelectReport, selectedIndex, on
                         </thead>
                         <tbody>
                             {results.map((result, index) => (
-                                <tr
-                                    key={index}
-                                    className={`
-                                        border-b border-border last:border-b-0
-                                        transition-colors duration-150
-                                        ${selectedIndex === index ? 'bg-primary/5' : 'hover:bg-surface-hover'}
-                                        ${result.status === 'verified' ? 'cursor-pointer' : ''}
-                                    `}
-                                >
-                                    <td className="px-4 py-3 font-mono text-xs">{result.report.studentId}</td>
-                                    <td className="px-4 py-3 font-medium">{result.report.bookTitle}</td>
-                                    <td className="px-4 py-3 text-muted">{result.report.author}</td>
-                                    <td className="px-4 py-3">{getStatusBadge(result.status)}</td>
-                                    <td className="px-4 py-3">
-                                        <div className="flex items-center gap-2">
-                                            {result.status === 'verified' && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => onSelectReport(index)}
-                                                    className="px-2.5 py-1 rounded-md border border-primary/30 text-primary text-xs font-medium hover:bg-primary/5 transition-colors"
-                                                >
-                                                    상세 비교
-                                                </button>
-                                            )}
-                                            {result.status === 'verified' && !result.reviewAnalysis && (
-                                                <button
-                                                    type="button"
-                                                    onClick={(e) => { e.stopPropagation(); handleAnalyzeReview(index); }}
-                                                    disabled={analyzingIndex !== null || !canAnalyzeMore}
-                                                    className="px-2.5 py-1 rounded-md bg-gradient-to-r from-accent to-primary text-white text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
-                                                >
-                                                    {analyzingIndex === index ? (
-                                                        <>
-                                                            <div className="w-3 h-3 border-[1.5px] border-white border-t-transparent rounded-full animate-spin" />
-                                                            분석 중
-                                                        </>
-                                                    ) : (
-                                                        'AI 분석'
-                                                    )}
-                                                </button>
-                                            )}
-                                            {result.reviewAnalysis && (
-                                                <div className="flex flex-col gap-1">
-                                                    {getVerdictBadge(result.reviewAnalysis.verdict)}
-                                                    <p className="text-xs text-muted max-w-xs leading-relaxed">
-                                                        {result.reviewAnalysis.reasoning}
-                                                    </p>
+                                <Fragment key={index}>
+                                    <tr
+                                        className={`
+                                            border-b border-border last:border-b-0
+                                            transition-colors duration-150
+                                            ${selectedIndex === index ? 'bg-primary/5 border-b-primary/10' : 'hover:bg-surface-hover'}
+                                            ${result.status === 'verified' ? 'cursor-pointer' : ''}
+                                        `}
+                                        onClick={() => result.status === 'verified' && onSelectReport(index)}
+                                    >
+                                        <td className="px-4 py-3 font-mono text-xs">{result.report.studentId}</td>
+                                        <td className="px-4 py-3 font-medium">{result.report.bookTitle}</td>
+                                        <td className="px-4 py-3 text-muted">{result.report.author}</td>
+                                        <td className="px-4 py-3">{getStatusBadge(result.status)}</td>
+                                        <td className="px-4 py-3">
+                                            <div className="flex items-center gap-2">
+                                                {result.status === 'verified' && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => { e.stopPropagation(); onSelectReport(index); }}
+                                                        className="px-2.5 py-1 rounded-md border border-primary/30 text-primary text-xs font-medium hover:bg-primary/5 transition-colors"
+                                                    >
+                                                        {selectedIndex === index ? '접기' : '상세 비교'}
+                                                    </button>
+                                                )}
+                                                {result.status === 'verified' && !result.reviewAnalysis && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => { e.stopPropagation(); handleAnalyzeReview(index); }}
+                                                        disabled={analyzingIndex !== null || !canAnalyzeMore}
+                                                        className="px-2.5 py-1 rounded-md bg-gradient-to-r from-accent to-primary text-white text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                                                    >
+                                                        {analyzingIndex === index ? (
+                                                            <>
+                                                                <div className="w-3 h-3 border-[1.5px] border-white border-t-transparent rounded-full animate-spin" />
+                                                                분석 중
+                                                            </>
+                                                        ) : (
+                                                            'AI 분석'
+                                                        )}
+                                                    </button>
+                                                )}
+                                                {result.reviewAnalysis && (
+                                                    <div className="flex flex-col gap-1">
+                                                        {getVerdictBadge(result.reviewAnalysis.verdict)}
+                                                        <p className="text-xs text-muted max-w-xs leading-relaxed line-clamp-2">
+                                                            {result.reviewAnalysis.reasoning}
+                                                        </p>
+                                                    </div>
+                                                )}
+                                                {result.status !== 'verified' && result.errorMessage && (
+                                                    <span className="text-xs text-muted">{result.errorMessage}</span>
+                                                )}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {/* 상세 패널 (행 확장) */}
+                                    {selectedIndex === index && (
+                                        <tr className="bg-primary/5 border-b border-border animate-in fade-in duration-200">
+                                            <td colSpan={5} className="p-4 pt-1 pb-6">
+                                                <div className="pl-4 border-l-2 border-primary/30">
+                                                    <BookComparisonCard
+                                                        result={result}
+                                                        onClose={() => onSelectReport(index)}
+                                                    />
                                                 </div>
-                                            )}
-                                            {result.status !== 'verified' && result.errorMessage && (
-                                                <span className="text-xs text-muted">{result.errorMessage}</span>
-                                            )}
-                                        </div>
-                                    </td>
-                                </tr>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </Fragment>
                             ))}
                         </tbody>
                     </table>
