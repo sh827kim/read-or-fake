@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { AnalysisResult } from '@/app/lib/types';
+import type { AnalysisResult } from '@/lib/types';
 
 interface BookComparisonCardProps {
     result: AnalysisResult;
@@ -78,6 +78,7 @@ export default function BookComparisonCard({ result, onClose }: BookComparisonCa
                     <div className="px-6 py-4 border-b border-border bg-surface-hover/50 flex items-center gap-2">
                         <span className="text-base">🤖</span>
                         <h4 className="font-semibold text-sm">AI 분석 결과</h4>
+                        {/* 판정 배지 */}
                         {result.reviewAnalysis.verdict === 'high' && (
                             <span className="ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-success/10 text-success">
                                 읽었을 가능성 높음

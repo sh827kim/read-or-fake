@@ -1,0 +1,1 @@
+chrome.runtime.onInstalled.addListener(e=>{e.reason==="install"&&chrome.runtime.openOptionsPage()});chrome.sidePanel.setPanelBehavior({openPanelOnActionClick:!0}).catch(e=>console.error("Side panel error:",e));

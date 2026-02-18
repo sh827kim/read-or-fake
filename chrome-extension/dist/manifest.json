@@ -1,0 +1,35 @@
+{
+    "manifest_version": 3,
+    "name": "읽긴했니? - 독후감 진위 검증",
+    "description": "학생 독후감의 진위를 AI로 분석하는 크롬 확장 프로그램",
+    "version": "1.0.0",
+    "icons": {
+        "16": "icons/icon-16.png",
+        "48": "icons/icon-48.png",
+        "128": "icons/icon-128.png"
+    },
+    "action": {
+        "default_title": "읽긴했니?",
+        "default_icon": {
+            "16": "icons/icon-16.png",
+            "48": "icons/icon-48.png"
+        }
+    },
+    "side_panel": {
+        "default_path": "popup.html"
+    },
+    "options_page": "options.html",
+    "background": {
+        "service_worker": "service-worker.js",
+        "type": "module"
+    },
+    "permissions": [
+        "storage",
+        "sidePanel"
+    ],
+    "host_permissions": [
+        "https://openapi.naver.com/*",
+        "https://generativelanguage.googleapis.com/*",
+        "https://api.openai.com/*"
+    ]
+}

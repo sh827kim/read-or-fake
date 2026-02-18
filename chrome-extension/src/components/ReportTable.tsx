@@ -1,20 +1,14 @@
-'use client';
-
-import { useState, useCallback, Fragment } from 'react';
+import { useState, useCallback, useEffect, useRef, Fragment } from 'react';
 import BookComparisonCard from './BookComparisonCard';
-import type { AnalysisResult, ReviewAnalysis } from '@/app/lib/types';
-import { analyzeReview } from '@/app/lib/ai-analyzer';
-import { hasAiKey, type WebSettings } from '@/app/lib/web-storage';
-
-const MAX_AI_ANALYSES = 5;
+import type { AnalysisResult, ReviewAnalysis } from '@/lib/types';
+import { analyzeReview } from '@/lib/ai-analyzer';
+import { getSettings, hasAiKey } from '@/lib/storage';
 
 interface ReportTableProps {
     results: AnalysisResult[];
     onSelectReport: (index: number) => void;
     selectedIndex: number | null;
     onUpdateResult: (index: number, updated: AnalysisResult) => void;
-    settings: WebSettings | null;
-    onOpenSettings: () => void;
 }
 
 function getStatusBadge(status: AnalysisResult['status']) {
@@ -73,7 +67,7 @@ function getVerdictBadge(verdict: ReviewAnalysis['verdict']) {
     }
 }
 
-export default function ReportTable({ results, onSelectReport, selectedIndex, onUpdateResult, settings, onOpenSettings }: ReportTableProps) {
+export default function ReportTable({ results, onSelectReport, selectedIndex, onUpdateResult }: ReportTableProps) {
     const verifiedCount = results.filter(r => r.status === 'verified').length;
     const notFoundCount = results.filter(r => r.status === 'not_found').length;
     const errorCount = results.filter(r => r.status === 'error').length;
@@ -81,23 +75,31 @@ export default function ReportTable({ results, onSelectReport, selectedIndex, on
 
     const [analyzingIndex, setAnalyzingIndex] = useState<number | null>(null);
     const [analysisError, setAnalysisError] = useState<string | null>(null);
+    const [aiAvailable, setAiAvailable] = useState(false);
+    const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
+    const tooltipRef = useRef<HTMLDivElement>(null);
 
-    const canAnalyzeMore = analyzedCount < MAX_AI_ANALYSES;
-    const aiReady = settings !== null && hasAiKey(settings);
+    useEffect(() => {
+        getSettings().then((s) => setAiAvailable(hasAiKey(s)));
+    }, []);
 
     const handleAnalyzeReview = useCallback(async (index: number) => {
         const result = results[index];
         if (!result || result.status !== 'verified' || !result.verification.description) return;
-        if (!canAnalyzeMore || !settings || !aiReady) return;
 
         setAnalyzingIndex(index);
         setAnalysisError(null);
 
         try {
+            const settings = await getSettings();
+            if (!hasAiKey(settings)) {
+                throw new Error('AI API 키가 설정되지 않았습니다. 설정 페이지에서 등록해주세요.');
+            }
+
             const analysis: ReviewAnalysis = await analyzeReview(
                 settings,
-                result.report.bookTitle,
-                result.report.author,
+                result.verification.matchedTitle || result.report.bookTitle,
+                result.verification.matchedAuthor || result.report.author,
                 result.report.review,
                 result.verification.description,
             );
@@ -107,10 +109,21 @@ export default function ReportTable({ results, onSelectReport, selectedIndex, on
         } finally {
             setAnalyzingIndex(null);
         }
-    }, [results, canAnalyzeMore, onUpdateResult, settings, aiReady]);
+    }, [results, onUpdateResult]);
 
     return (
         <div className="space-y-4">
+            {/* fixed 툴팁 레이어 */}
+            {tooltip && (
+                <div
+                    ref={tooltipRef}
+                    className="fixed z-[9999] w-64 p-3 rounded-xl bg-surface border border-border shadow-2xl text-xs text-muted leading-relaxed pointer-events-none"
+                    style={{ left: tooltip.x, top: tooltip.y }}
+                >
+                    <p className="font-semibold text-foreground mb-1">AI 판단 근거</p>
+                    {tooltip.text}
+                </div>
+            )}
             {/* 요약 */}
             <div className="grid grid-cols-3 gap-3">
                 <div className="rounded-xl bg-success-bg/50 border border-success/20 p-4 text-center">
@@ -136,21 +149,14 @@ export default function ReportTable({ results, onSelectReport, selectedIndex, on
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium">AI 감상문 분석</p>
-                            {aiReady ? (
-                                <p className="text-xs text-muted">
-                                    의심되는 감상문의 &quot;AI 분석&quot; 버튼을 눌러 개별 분석하세요 (최대 {MAX_AI_ANALYSES}건, 현재 {analyzedCount}건 사용)
-                                </p>
-                            ) : (
-                                <p className="text-xs text-muted">
-                                    AI 분석을 사용하려면{' '}
-                                    <button
-                                        type="button"
-                                        onClick={onOpenSettings}
-                                        className="text-primary underline underline-offset-2 hover:opacity-80"
-                                    >
-                                        API 키를 설정
-                                    </button>
-                                    해주세요.
+                            <p className="text-xs text-muted">
+                                {aiAvailable
+                                    ? '의심되는 감상문의 "AI 분석" 버튼을 눌러 개별 분석하세요'
+                                    : 'AI API 키를 설정하면 감상문 심층 분석이 가능합니다'}
+                            </p>
+                            {aiAvailable && analyzedCount > 0 && (
+                                <p className="text-xs text-muted/70 mt-0.5">
+                                    💡 판단 결과에 마우스를 가져다 대면 상세 분석 내용을 확인할 수 있어요.
                                 </p>
                             )}
                         </div>
@@ -161,7 +167,8 @@ export default function ReportTable({ results, onSelectReport, selectedIndex, on
                         </div>
                     )}
                 </div>
-            )}
+            )
+            }
 
             {/* 테이블 */}
             <div className="rounded-xl border border-border overflow-hidden">
@@ -207,8 +214,7 @@ export default function ReportTable({ results, onSelectReport, selectedIndex, on
                                                     <button
                                                         type="button"
                                                         onClick={(e) => { e.stopPropagation(); handleAnalyzeReview(index); }}
-                                                        disabled={analyzingIndex !== null || !canAnalyzeMore || !aiReady}
-                                                        title={!aiReady ? 'AI 분석을 사용하려면 API 키를 설정해주세요' : undefined}
+                                                        disabled={analyzingIndex !== null || !aiAvailable}
                                                         className="px-2.5 py-1 rounded-md bg-gradient-to-r from-accent to-primary text-white text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
                                                     >
                                                         {analyzingIndex === index ? (
@@ -222,11 +228,21 @@ export default function ReportTable({ results, onSelectReport, selectedIndex, on
                                                     </button>
                                                 )}
                                                 {result.reviewAnalysis && (
-                                                    <div className="flex flex-col gap-1">
+                                                    <div
+                                                        className="cursor-default"
+                                                        onMouseEnter={(e) => {
+                                                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                                            const tipW = 256; // w-64
+                                                            const tipH = 100; // 예상 높이
+                                                            const x = Math.min(rect.left, window.innerWidth - tipW - 8);
+                                                            const y = rect.top - tipH - 8 < 0
+                                                                ? rect.bottom + 8
+                                                                : rect.top - tipH - 8;
+                                                            setTooltip({ text: result.reviewAnalysis!.reasoning, x, y });
+                                                        }}
+                                                        onMouseLeave={() => setTooltip(null)}
+                                                    >
                                                         {getVerdictBadge(result.reviewAnalysis.verdict)}
-                                                        <p className="text-xs text-muted max-w-xs leading-relaxed line-clamp-2">
-                                                            {result.reviewAnalysis.reasoning}
-                                                        </p>
                                                     </div>
                                                 )}
                                                 {result.status !== 'verified' && result.errorMessage && (
@@ -254,6 +270,6 @@ export default function ReportTable({ results, onSelectReport, selectedIndex, on
                     </table>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }
