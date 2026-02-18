@@ -3,6 +3,8 @@
 import { useState, useCallback, Fragment } from 'react';
 import BookComparisonCard from './BookComparisonCard';
 import type { AnalysisResult, ReviewAnalysis } from '@/app/lib/types';
+import { analyzeReview } from '@/app/lib/ai-analyzer';
+import { hasAiKey, type WebSettings } from '@/app/lib/web-storage';
 
 const MAX_AI_ANALYSES = 5;
 
@@ -11,6 +13,8 @@ interface ReportTableProps {
     onSelectReport: (index: number) => void;
     selectedIndex: number | null;
     onUpdateResult: (index: number, updated: AnalysisResult) => void;
+    settings: WebSettings | null;
+    onOpenSettings: () => void;
 }
 
 function getStatusBadge(status: AnalysisResult['status']) {
@@ -69,7 +73,7 @@ function getVerdictBadge(verdict: ReviewAnalysis['verdict']) {
     }
 }
 
-export default function ReportTable({ results, onSelectReport, selectedIndex, onUpdateResult }: ReportTableProps) {
+export default function ReportTable({ results, onSelectReport, selectedIndex, onUpdateResult, settings, onOpenSettings }: ReportTableProps) {
     const verifiedCount = results.filter(r => r.status === 'verified').length;
     const notFoundCount = results.filter(r => r.status === 'not_found').length;
     const errorCount = results.filter(r => r.status === 'error').length;
@@ -79,40 +83,31 @@ export default function ReportTable({ results, onSelectReport, selectedIndex, on
     const [analysisError, setAnalysisError] = useState<string | null>(null);
 
     const canAnalyzeMore = analyzedCount < MAX_AI_ANALYSES;
+    const aiReady = settings !== null && hasAiKey(settings);
 
     const handleAnalyzeReview = useCallback(async (index: number) => {
         const result = results[index];
         if (!result || result.status !== 'verified' || !result.verification.description) return;
-        if (!canAnalyzeMore) return;
+        if (!canAnalyzeMore || !settings || !aiReady) return;
 
         setAnalyzingIndex(index);
         setAnalysisError(null);
 
         try {
-            const response = await fetch('/api/analyze-similarity', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    bookTitle: result.report.bookTitle,
-                    author: result.report.author,
-                    review: result.report.review,
-                    description: result.verification.description,
-                }),
-            });
-
-            if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
-                throw new Error(data.error || `서버 오류 (${response.status})`);
-            }
-
-            const analysis: ReviewAnalysis = await response.json();
+            const analysis: ReviewAnalysis = await analyzeReview(
+                settings,
+                result.report.bookTitle,
+                result.report.author,
+                result.report.review,
+                result.verification.description,
+            );
             onUpdateResult(index, { ...result, reviewAnalysis: analysis });
         } catch (err) {
             setAnalysisError(err instanceof Error ? err.message : 'AI 분석 중 오류가 발생했습니다.');
         } finally {
             setAnalyzingIndex(null);
         }
-    }, [results, canAnalyzeMore, onUpdateResult]);
+    }, [results, canAnalyzeMore, onUpdateResult, settings, aiReady]);
 
     return (
         <div className="space-y-4">
@@ -141,9 +136,23 @@ export default function ReportTable({ results, onSelectReport, selectedIndex, on
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium">AI 감상문 분석</p>
-                            <p className="text-xs text-muted">
-                                의심되는 감상문의 &quot;AI 분석&quot; 버튼을 눌러 개별 분석하세요 (최대 {MAX_AI_ANALYSES}건, 현재 {analyzedCount}건 사용)
-                            </p>
+                            {aiReady ? (
+                                <p className="text-xs text-muted">
+                                    의심되는 감상문의 &quot;AI 분석&quot; 버튼을 눌러 개별 분석하세요 (최대 {MAX_AI_ANALYSES}건, 현재 {analyzedCount}건 사용)
+                                </p>
+                            ) : (
+                                <p className="text-xs text-muted">
+                                    AI 분석을 사용하려면{' '}
+                                    <button
+                                        type="button"
+                                        onClick={onOpenSettings}
+                                        className="text-primary underline underline-offset-2 hover:opacity-80"
+                                    >
+                                        API 키를 설정
+                                    </button>
+                                    해주세요.
+                                </p>
+                            )}
                         </div>
                     </div>
                     {analysisError && (
@@ -198,7 +207,8 @@ export default function ReportTable({ results, onSelectReport, selectedIndex, on
                                                     <button
                                                         type="button"
                                                         onClick={(e) => { e.stopPropagation(); handleAnalyzeReview(index); }}
-                                                        disabled={analyzingIndex !== null || !canAnalyzeMore}
+                                                        disabled={analyzingIndex !== null || !canAnalyzeMore || !aiReady}
+                                                        title={!aiReady ? 'AI 분석을 사용하려면 API 키를 설정해주세요' : undefined}
                                                         className="px-2.5 py-1 rounded-md bg-gradient-to-r from-accent to-primary text-white text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
                                                     >
                                                         {analyzingIndex === index ? (

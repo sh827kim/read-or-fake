@@ -72,6 +72,37 @@ export default function BookComparisonCard({ result, onClose }: BookComparisonCa
                 </div>
             </div>
 
+            {/* AI 분석 결과 */}
+            {result.reviewAnalysis && (
+                <div className="mt-3 rounded-2xl border border-border bg-surface overflow-hidden shadow-lg">
+                    <div className="px-6 py-4 border-b border-border bg-surface-hover/50 flex items-center gap-2">
+                        <span className="text-base">🤖</span>
+                        <h4 className="font-semibold text-sm">AI 분석 결과</h4>
+                        {result.reviewAnalysis.verdict === 'high' && (
+                            <span className="ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-success/10 text-success">
+                                읽었을 가능성 높음
+                            </span>
+                        )}
+                        {result.reviewAnalysis.verdict === 'medium' && (
+                            <span className="ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-warning/10 text-warning">
+                                판단 어려움
+                            </span>
+                        )}
+                        {result.reviewAnalysis.verdict === 'low' && (
+                            <span className="ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-danger/10 text-danger">
+                                읽었을 가능성 낮음
+                            </span>
+                        )}
+                    </div>
+                    <div className="px-6 py-4">
+                        <p className="text-xs text-muted font-medium mb-1.5">판단 근거</p>
+                        <p className="text-sm leading-relaxed text-foreground/80">
+                            {result.reviewAnalysis.reasoning}
+                        </p>
+                    </div>
+                </div>
+            )}
+
             {/* 이미지 라이트박스 */}
             {showLightbox && verification.thumbnail && (
                 <div
