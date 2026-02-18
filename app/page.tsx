@@ -124,8 +124,8 @@ export default function Home() {
               type="button"
               onClick={() => setShowApiKeyModal(true)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${aiConfigured
-                  ? 'border-success/30 text-success bg-success/5 hover:bg-success/10'
-                  : 'border-border text-muted hover:bg-surface-hover'
+                ? 'border-success/30 text-success bg-success/5 hover:bg-success/10'
+                : 'border-border text-muted hover:bg-surface-hover'
                 }`}
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -173,6 +173,22 @@ export default function Home() {
                   <p className="text-sm text-muted">{item.desc}</p>
                 </div>
               ))}
+            </div>
+
+            {/* AI 분석 기능 안내 */}
+            <div className="rounded-xl bg-gradient-to-r from-primary/5 to-accent/5 border border-primary/10 p-4 flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center shrink-0 shadow-sm border border-border">
+                <span className="text-xl">🤖</span>
+              </div>
+              <div className="space-y-1">
+                <p className="font-semibold text-sm text-foreground">
+                  심층 AI 분석이 필요하신가요?
+                </p>
+                <p className="text-sm text-muted leading-relaxed">
+                  우측 상단 <button type="button" onClick={() => setShowApiKeyModal(true)} className="font-bold text-primary hover:underline underline-offset-2">[AI 설정]</button>에서 API 키를 등록하면, 독후감 내용이 실제 책과 일치하는지 <strong className="text-foreground">AI가 정밀하게 분석</strong>해줍니다.
+                  <span className="block mt-0.5 text-xs opacity-80">(Google Gemini 무료 키 또는 OpenAI 키 사용 가능)</span>
+                </p>
+              </div>
             </div>
 
             {/* 파일 형식 안내 */}
