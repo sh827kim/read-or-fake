@@ -247,7 +247,7 @@ export default function Home() {
             </div>
             <div className="text-center space-y-2">
               <h2 className="text-2xl font-bold">독후감을 분석하고 있습니다</h2>
-              <p className="text-muted">네이버 도서 API로 책 존재 여부를 확인하는 중...</p>
+              <p className="text-muted">책 존재 여부를 확인하는 중...</p>
             </div>
             <div className="w-full max-w-md">
               <ProgressBar

@@ -63,7 +63,7 @@ export default function BookComparisonCard({ result, onClose }: BookComparisonCa
                     <div className="p-6">
                         <div className="flex items-center gap-2 mb-3">
                             <div className="w-2 h-2 rounded-full bg-accent" />
-                            <h4 className="font-semibold text-sm text-accent">책 소개 (네이버 도서)</h4>
+                            <h4 className="font-semibold text-sm text-accent">책 소개</h4>
                         </div>
                         <div className="text-sm leading-relaxed text-foreground/80 max-h-64 overflow-y-auto pr-2 whitespace-pre-wrap">
                             {verification.description || '책 소개 정보를 찾을 수 없습니다.'}
